@@ -48,7 +48,6 @@ import {
   isEqualMetadataOnRemote, FILE_NAME_FOR_DATA_JSON,
 } from "./metadataOnRemote";
 import {isInsideObsFolder, isInsideTrashFolder, ObsConfigDirFileType} from "./obsFolderLister";
-import { getConfigDirPluginRoot } from "./configDirSnapshot";
 
 import { log } from "./moreOnLog";
 
@@ -308,7 +307,7 @@ const ensembleMixedStates = async (
   localConfigDirContents: ObsConfigDirFileType[] | undefined,
   remoteDeleteHistory: DeletionOnRemote[],
   localFileHistory: FileFolderHistoryRecord[],
-  recreatedPluginRoots: Set<string>,
+  recreatedConfigKeys: Set<string>,
   syncConfigDir: boolean,
   syncTrashDir: boolean,
   syncBookmarks: boolean,
@@ -507,35 +506,39 @@ const ensembleMixedStates = async (
   return results;
 };
 
-const markForceRemoteDeleteForConfigPlugins = (
+const isMatchedConfigDeleteRoot = (key: string, root: string) => {
+  if (root.endsWith("/")) {
+    return key === root || key.startsWith(root);
+  }
+  return key === root;
+};
+
+const markForceRemoteDeleteForConfigItems = (
   results: Record<string, FileOrFolderMixedState>,
   remoteDeleteHistory: DeletionOnRemote[],
-  recreatedPluginRoots: Set<string>,
+  recreatedConfigKeys: Set<string>,
   configDir: string
 ) => {
-  const remoteDeletedPluginRoots = new Map<string, number>();
   for (const entry of remoteDeleteHistory) {
-    const root = getConfigDirPluginRoot(entry.key, configDir);
-    if (root === undefined || entry.key !== root) {
+    const root = entry.key;
+    if (!isInsideObsFolder(root, configDir)) {
       continue;
     }
-    const prev = remoteDeletedPluginRoots.get(root) ?? -1;
-    remoteDeletedPluginRoots.set(root, Math.max(prev, entry.actionWhen));
-  }
-
-  for (const [root, deltimeRemote] of remoteDeletedPluginRoots.entries()) {
-    if (recreatedPluginRoots.has(root)) {
+    if (recreatedConfigKeys.has(root)) {
       continue;
     }
     for (const [key, val] of Object.entries(results)) {
-      if (!(key === root || key.startsWith(root))) {
+      if (!isMatchedConfigDeleteRoot(key, root)) {
         continue;
       }
       val.forceRemoteDelete = true;
       val.forceRemoteDeleteRoot = root;
-      if (val.deltimeRemote === undefined || val.deltimeRemote < deltimeRemote) {
-        val.deltimeRemote = deltimeRemote;
-        val.deltimeRemoteFmt = unixTimeToStr(deltimeRemote);
+      if (
+        val.deltimeRemote === undefined ||
+        val.deltimeRemote < entry.actionWhen
+      ) {
+        val.deltimeRemote = entry.actionWhen;
+        val.deltimeRemoteFmt = unixTimeToStr(entry.actionWhen);
       }
     }
   }
@@ -1009,7 +1012,7 @@ export const getSyncPlan = async (
   localConfigDirContents: ObsConfigDirFileType[] | undefined,
   remoteDeleteHistory: DeletionOnRemote[],
   localFileHistory: FileFolderHistoryRecord[],
-  recreatedPluginRoots: Set<string>,
+  recreatedConfigKeys: Set<string>,
   remoteType: SUPPORTED_SERVICES_TYPE,
   triggerSource: SyncTriggerSourceType,
   vault: Vault,
@@ -1028,7 +1031,7 @@ export const getSyncPlan = async (
     localConfigDirContents,
     remoteDeleteHistory,
     localFileHistory,
-    recreatedPluginRoots,
+    recreatedConfigKeys,
     syncConfigDir,
     syncTrashDir,
     syncBookmarks,
@@ -1038,10 +1041,10 @@ export const getSyncPlan = async (
     password
   );
 
-  markForceRemoteDeleteForConfigPlugins(
+  markForceRemoteDeleteForConfigItems(
     mixedStates,
     remoteDeleteHistory,
-    recreatedPluginRoots,
+    recreatedConfigKeys,
     configDir
   );
 

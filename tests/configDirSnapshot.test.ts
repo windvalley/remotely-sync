@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import {
   buildConfigDirSnapshotRecords,
-  collectRecreatedPluginRoots,
+  collectRecreatedConfigKeys,
   isConfigDirSnapshotMetaCompatible,
   synthesizeDeletedConfigDirRecords,
 } from "../src/configDirSnapshot";
@@ -124,7 +124,7 @@ describe("Config dir snapshot", () => {
     expect(synthesized).deep.equal([]);
   });
 
-  it("should detect recreated plugin roots only when they were absent before", () => {
+  it("should detect recreated config keys only when they were absent before", () => {
     const snapshot = buildConfigDirSnapshotRecords(
       [
         {
@@ -139,7 +139,7 @@ describe("Config dir snapshot", () => {
       "vault"
     );
 
-    const recreated = collectRecreatedPluginRoots(
+    const recreated = collectRecreatedConfigKeys(
       snapshot,
       [
         {
@@ -156,10 +156,19 @@ describe("Config dir snapshot", () => {
           size: 0,
           type: "folder",
         },
+        {
+          key: ".obsidian/workspace.json",
+          ctime: 2,
+          mtime: 2,
+          size: 10,
+          type: "file",
+        },
       ],
-      ".obsidian"
     );
 
-    expect([...recreated]).deep.equal([".obsidian/plugins/new-plugin/"]);
+    expect([...recreated].sort()).deep.equal([
+      ".obsidian/plugins/new-plugin/",
+      ".obsidian/workspace.json",
+    ]);
   });
 });

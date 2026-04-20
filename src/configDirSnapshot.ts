@@ -47,39 +47,18 @@ export const buildConfigDirSnapshotRecords = (
   return snapshot;
 };
 
-export const getConfigDirPluginRoot = (key: string, configDir: string) => {
-  const pluginPrefix = `${configDir}/plugins/`;
-  if (!(key === pluginPrefix || key.startsWith(pluginPrefix))) {
-    return undefined;
-  }
-  const rest = key.slice(pluginPrefix.length);
-  const pluginID = rest.split("/")[0];
-  if (pluginID === undefined || pluginID === "") {
-    return undefined;
-  }
-  return `${pluginPrefix}${pluginID}/`;
-};
-
-export const collectRecreatedPluginRoots = (
+export const collectRecreatedConfigKeys = (
   snapshot: ConfigDirSnapshotRecord[],
-  localConfigDirContents: ObsConfigDirFileType[],
-  configDir: string
+  localConfigDirContents: ObsConfigDirFileType[]
 ) => {
   const prevKeys = new Set(snapshot.map((entry) => entry.key));
-  const roots = new Set<string>();
+  const keys = new Set<string>();
   for (const entry of localConfigDirContents) {
-    if (entry.type !== "folder") {
-      continue;
-    }
-    const root = getConfigDirPluginRoot(entry.key, configDir);
-    if (root === undefined || entry.key !== root) {
-      continue;
-    }
-    if (!prevKeys.has(root)) {
-      roots.add(root);
+    if (!prevKeys.has(entry.key)) {
+      keys.add(entry.key);
     }
   }
-  return roots;
+  return keys;
 };
 
 export const synthesizeDeletedConfigDirRecords = (
