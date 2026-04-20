@@ -2,7 +2,19 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
-**obsidian-vault-sync** is an Obsidian sync plugin for S3, WebDAV, Dropbox, and OneDrive. It started from the *Remotely Save* codebase, but this repository now treats `obsidian-vault-sync` as a fully new plugin identity.
+**obsidian-vault-sync** is an Obsidian sync plugin for S3, WebDAV, Dropbox, and OneDrive. This repository is forked from [sboesen/remotely-sync](https://github.com/sboesen/remotely-sync), and now treats `obsidian-vault-sync` as a fully new plugin identity.
+
+## Key Differences From `sboesen/remotely-sync`
+
+- **More complete multi-device sync for Obsidian config items.** Compared with the original project, this repository focuses on improving sync completeness for `.obsidian/`, `bookmarks.json`, and `.trash`, especially when changes need to propagate across devices.
+- **Snapshot-based deletion tracking for synced config items.** Removals under `.obsidian`, `bookmarks.json`, and `.trash` are tracked from the previous successful sync, so deletions can be propagated more reliably instead of only syncing additions or overwrites.
+- **Bookmarks and trash sync are first-class options.** Obsidian bookmarks are synced by default, and `.trash` can be synced explicitly when you use local trash as part of your workflow.
+- **Safer handling of the current plugin folder during config sync.** The current plugin's own `data.json` is always excluded from config sync, while other relevant plugin files can still be included when config sync is enabled.
+- **New plugin identity.** The repository name, plugin directory, manifest id, and displayed plugin name are all `obsidian-vault-sync`.
+- **No backward compatibility.** Existing `remotely-save`, `remotely-secure`, and `remotely-sync` installations, settings, OAuth grants, and remote metadata are not reused.
+- **New remote namespace expected.** Callback URIs, remote metadata filenames, and plugin-specific storage paths now follow the `obsidian-vault-sync` identity, so a fresh remote namespace should be used.
+- **New OAuth packaging expectation.** Self-built Dropbox / OneDrive releases must inject new OAuth credentials through `.env`; otherwise those providers will show a clear configuration warning.
+- **Build pipeline is simplified.** The project now uses `npm run build` with `esbuild`, and build outputs are generated under `dist/`.
 
 The Git repository, plugin directory, manifest id, and the name shown inside Obsidian are all `obsidian-vault-sync`.
 
@@ -70,6 +82,7 @@ The safest way to move from Remotely Save (or any older fork) to obsidian-vault-
 6. Perform the first sync with obsidian-vault-sync
 
 ## Credit
+* Thanks to [@sboesen](https://github.com/sboesen) and the [sboesen/remotely-sync](https://github.com/sboesen/remotely-sync) project for the direct fork base and prior maintenance work
 * Thanks to @fyears for the original Remotely Save plugin
 * Thanks to @sampurkiszb for sync on save
 * Thanks to @zaiziw for Obsidian bookmark sync

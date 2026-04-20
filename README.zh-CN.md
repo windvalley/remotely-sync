@@ -4,7 +4,19 @@
 
 `obsidian-vault-sync` 是一个用于 Obsidian 的第三方同步插件，支持 S3 / OSS / MinIO、WebDAV、Dropbox 和 OneDrive（个人版）。
 
-本仓库虽然起源于 *Remotely Save*，但当前已经把 `obsidian-vault-sync` 视为一个**全新的插件身份**。仓库名、插件目录名、`manifest.id`、Obsidian 内显示的插件名都统一为 `obsidian-vault-sync`。
+本仓库直接 fork 自 [sboesen/remotely-sync](https://github.com/sboesen/remotely-sync)。在此基础上，当前仓库已经把 `obsidian-vault-sync` 视为一个**全新的插件身份**。仓库名、插件目录名、`manifest.id`、Obsidian 内显示的插件名都统一为 `obsidian-vault-sync`。
+
+## 相比 `sboesen/remotely-sync` 的主要差异
+
+- **更关注 `.obsidian/` 多端同步的完整性。** 相比原项目，当前仓库重点增强了 `.obsidian/`、`bookmarks.json`、`.trash` 这些 Obsidian 配置与状态文件在多设备之间的同步完整性。
+- **为已同步配置项增加了基于快照的删除跟踪。** `.obsidian`、`bookmarks.json`、`.trash` 下的删除操作会基于上一次成功同步的快照进行传播，而不只是同步新增和覆盖。
+- **书签与 `.trash` 同步是一等能力。** Obsidian 书签默认参与同步；如果你的工作流依赖本地 `.trash`，也可以显式开启其同步。
+- **配置目录同步时更安全地处理当前插件目录。** 当前插件自身的 `data.json` 会始终排除在配置同步之外，同时保留其它相关插件文件的同步能力。
+- **插件身份已完全切换。** 仓库名、插件目录名、`manifest.id`、Obsidian 内显示名称都统一为 `obsidian-vault-sync`。
+- **不再兼容旧安装。** 旧的 `remotely-save`、`remotely-secure`、`remotely-sync` 安装、设置、OAuth 授权和远端元数据都不会复用。
+- **需要新的远端命名空间。** 回调 URI、远端元数据文件名、插件专用存储路径都跟随 `obsidian-vault-sync` 新身份变化，因此应使用新的远端目录、bucket 或应用空间。
+- **Dropbox / OneDrive 构建要求不同。** 自建版本需要通过 `.env` 注入新的 OAuth 凭据，否则这两个提供商会明确提示当前构建未包含对应配置。
+- **构建链已简化。** 项目现在统一使用 `npm run build` + `esbuild`，构建产物统一输出到 `dist/`。
 
 ## 重要说明
 
@@ -171,5 +183,10 @@ ONEDRIVE_AUTHORITY=https://login.microsoftonline.com/common/
 
 - 问题反馈：<https://github.com/windvalley/obsidian-vault-sync/issues>
 - Pull Request：<https://github.com/windvalley/obsidian-vault-sync/pulls>
+
+## 致谢
+
+- 感谢 [@sboesen](https://github.com/sboesen) 和 [sboesen/remotely-sync](https://github.com/sboesen/remotely-sync) 提供直接的 fork 基础以及此前的维护工作
+- 感谢 @fyears 提供最初的 Remotely Save 项目
 
 如果后续需要，我可以继续把 `docs/` 目录里的高频文档逐步补成中文版本。
