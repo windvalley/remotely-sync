@@ -48,6 +48,7 @@ import {
   isEqualMetadataOnRemote, FILE_NAME_FOR_DATA_JSON,
 } from "./metadataOnRemote";
 import {isInsideObsFolder, isInsideTrashFolder, ObsConfigDirFileType} from "./obsFolderLister";
+import { getConfigDirPluginRoot } from "./configDirSnapshot";
 
 import { log } from "./moreOnLog";
 
@@ -263,24 +264,33 @@ export const fetchMetadataFile = async (
   return metadata;
 };
 
-const isSkipItem = (
+export const shouldSkipSyncItem = (
   key: string,
   syncConfigDir: boolean,
   syncUnderscoreItems: boolean,
   syncTrashDir: boolean,
-  syncBookmarks: boolean
-  , configDir: string) => {
+  syncBookmarks: boolean,
+  configDir: string,
+  selfPluginID: string
+) => {
+  if (key === configDir + FILE_NAME_FOR_BOOKMARK_FILE) {
+    if (syncConfigDir) {
+      return false;
+    }
+    return !syncBookmarks;
+  }
+
   if (syncConfigDir && isInsideObsFolder(key, configDir)) {
     // Special exception for Remotely Sync's data.json file - always skip.
     // No point to sync our plugin settings, causes endless syncing because we persist last sync time
-    if (key == configDir + '/plugins/remotely-secure/' + FILE_NAME_FOR_DATA_JSON) {
+    if (key === `${configDir}/plugins/${selfPluginID}/${FILE_NAME_FOR_DATA_JSON}`) {
       return true;
     }
     return false;
   }
 
   if (syncTrashDir && isInsideTrashFolder(key)) {
-    return true;
+    return false;
   }
 
   const shouldSkip = (
@@ -289,13 +299,7 @@ const isSkipItem = (
     key === DEFAULT_FILE_NAME_FOR_METADATAONREMOTE ||
     key === DEFAULT_FILE_NAME_FOR_METADATAONREMOTE2
   );
-  // Special exception for bookmark file, don't skip.
-  if (key === configDir + FILE_NAME_FOR_BOOKMARK_FILE) {
-    return false;
-  }
   return shouldSkip;
-
-
 };
 
 const ensembleMixedStates = async (
@@ -304,11 +308,13 @@ const ensembleMixedStates = async (
   localConfigDirContents: ObsConfigDirFileType[] | undefined,
   remoteDeleteHistory: DeletionOnRemote[],
   localFileHistory: FileFolderHistoryRecord[],
+  recreatedPluginRoots: Set<string>,
   syncConfigDir: boolean,
   syncTrashDir: boolean,
   syncBookmarks: boolean,
   configDir: string,
   syncUnderscoreItems: boolean,
+  selfPluginID: string,
   password: string
 ) => {
   const results = {} as Record<string, FileOrFolderMixedState>;
@@ -316,7 +322,7 @@ const ensembleMixedStates = async (
   for (const r of remoteStates) {
     const key = r.key;
 
-    if (isSkipItem(key, syncConfigDir, syncUnderscoreItems, syncTrashDir, syncBookmarks, configDir)) {
+    if (shouldSkipSyncItem(key, syncConfigDir, syncUnderscoreItems, syncTrashDir, syncBookmarks, configDir, selfPluginID)) {
       continue;
     }
     results[key] = r;
@@ -355,7 +361,7 @@ const ensembleMixedStates = async (
       throw Error(`unexpected ${entry}`);
     }
 
-    if (isSkipItem(key, syncConfigDir, syncUnderscoreItems, syncTrashDir, syncBookmarks, configDir)) {
+    if (shouldSkipSyncItem(key, syncConfigDir, syncUnderscoreItems, syncTrashDir, syncBookmarks, configDir, selfPluginID)) {
       continue;
     }
 
@@ -375,8 +381,7 @@ const ensembleMixedStates = async (
   if (localConfigDirContents !== undefined) {
     for (const entry of localConfigDirContents) {
       const key = entry.key;
-      // If we're not syncing the config dir and it isn't the bookmark file, skip.
-      if (!syncConfigDir && key != configDir + FILE_NAME_FOR_BOOKMARK_FILE) {
+      if (shouldSkipSyncItem(key, syncConfigDir, syncUnderscoreItems, syncTrashDir, syncBookmarks, configDir, selfPluginID)) {
         continue;
       }
       let mtimeLocal = Math.max(entry.mtime ?? 0, entry.ctime ?? 0);
@@ -415,7 +420,7 @@ const ensembleMixedStates = async (
       deltimeRemoteFmt: unixTimeToStr(entry.actionWhen),
     } as FileOrFolderMixedState;
 
-    if (isSkipItem(key, syncConfigDir, syncUnderscoreItems, syncTrashDir, syncBookmarks, configDir)) {
+    if (shouldSkipSyncItem(key, syncConfigDir, syncUnderscoreItems, syncTrashDir, syncBookmarks, configDir, selfPluginID)) {
       continue;
     }
 
@@ -443,7 +448,7 @@ const ensembleMixedStates = async (
       throw Error(`unexpected ${entry}`);
     }
 
-    if (isSkipItem(key, syncConfigDir, syncUnderscoreItems, syncTrashDir, syncBookmarks, configDir)) {
+    if (shouldSkipSyncItem(key, syncConfigDir, syncUnderscoreItems, syncTrashDir, syncBookmarks, configDir, selfPluginID)) {
       continue;
     }
 
@@ -502,6 +507,40 @@ const ensembleMixedStates = async (
   return results;
 };
 
+const markForceRemoteDeleteForConfigPlugins = (
+  results: Record<string, FileOrFolderMixedState>,
+  remoteDeleteHistory: DeletionOnRemote[],
+  recreatedPluginRoots: Set<string>,
+  configDir: string
+) => {
+  const remoteDeletedPluginRoots = new Map<string, number>();
+  for (const entry of remoteDeleteHistory) {
+    const root = getConfigDirPluginRoot(entry.key, configDir);
+    if (root === undefined || entry.key !== root) {
+      continue;
+    }
+    const prev = remoteDeletedPluginRoots.get(root) ?? -1;
+    remoteDeletedPluginRoots.set(root, Math.max(prev, entry.actionWhen));
+  }
+
+  for (const [root, deltimeRemote] of remoteDeletedPluginRoots.entries()) {
+    if (recreatedPluginRoots.has(root)) {
+      continue;
+    }
+    for (const [key, val] of Object.entries(results)) {
+      if (!(key === root || key.startsWith(root))) {
+        continue;
+      }
+      val.forceRemoteDelete = true;
+      val.forceRemoteDeleteRoot = root;
+      if (val.deltimeRemote === undefined || val.deltimeRemote < deltimeRemote) {
+        val.deltimeRemote = deltimeRemote;
+        val.deltimeRemoteFmt = unixTimeToStr(deltimeRemote);
+      }
+    }
+  }
+};
+
 const assignOperationToFileInplace = (
   origRecord: FileOrFolderMixedState,
   keptFolder: Set<string>,
@@ -513,6 +552,12 @@ const assignOperationToFileInplace = (
   // files and folders are treated differently
   // here we only check files
   if (r.key.endsWith("/")) {
+    return r;
+  }
+
+  if (r.forceRemoteDelete) {
+    r.decision = "keepRemoteDelHist";
+    r.decisionBranch = 46;
     return r;
   }
 
@@ -830,6 +875,12 @@ const assignOperationToFolderInplace = async (
     return r;
   }
 
+  if (r.forceRemoteDelete) {
+    r.decision = "keepRemoteDelHistFolder";
+    r.decisionBranch = 18;
+    return r;
+  }
+
   if (!keptFolder.has(r.key)) {
     // the folder does NOT have any must-be-kept children!
 
@@ -958,6 +1009,7 @@ export const getSyncPlan = async (
   localConfigDirContents: ObsConfigDirFileType[] | undefined,
   remoteDeleteHistory: DeletionOnRemote[],
   localFileHistory: FileFolderHistoryRecord[],
+  recreatedPluginRoots: Set<string>,
   remoteType: SUPPORTED_SERVICES_TYPE,
   triggerSource: SyncTriggerSourceType,
   vault: Vault,
@@ -966,6 +1018,7 @@ export const getSyncPlan = async (
   syncBookmarks: boolean,
   configDir: string,
   syncUnderscoreItems: boolean,
+  selfPluginID: string,
   skipSizeLargerThan: number,
   password: string = ""
 ) => {
@@ -975,12 +1028,21 @@ export const getSyncPlan = async (
     localConfigDirContents,
     remoteDeleteHistory,
     localFileHistory,
+    recreatedPluginRoots,
     syncConfigDir,
     syncTrashDir,
     syncBookmarks,
     configDir,
     syncUnderscoreItems,
+    selfPluginID,
     password
+  );
+
+  markForceRemoteDeleteForConfigPlugins(
+    mixedStates,
+    remoteDeleteHistory,
+    recreatedPluginRoots,
+    configDir
   );
 
   const sortedKeys = Object.keys(mixedStates).sort(

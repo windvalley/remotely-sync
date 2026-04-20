@@ -9,8 +9,8 @@ import { statFix, toText, unixTimeToStr } from "./misc";
 
 import { log } from "./moreOnLog";
 
-const DB_VERSION_NUMBER_IN_HISTORY = [20211114, 20220108, 20220326];
-export const DEFAULT_DB_VERSION_NUMBER: number = 20220326;
+const DB_VERSION_NUMBER_IN_HISTORY = [20211114, 20220108, 20220326, 20260420];
+export const DEFAULT_DB_VERSION_NUMBER: number = 20260420;
 export const DEFAULT_DB_NAME = "remotelysavedb";
 export const DEFAULT_TBL_VERSION = "schemaversion";
 export const DEFAULT_TBL_FILE_HISTORY = "filefolderoperationhistory";
@@ -18,6 +18,7 @@ export const DEFAULT_TBL_SYNC_MAPPING = "syncmetadatahistory";
 export const DEFAULT_SYNC_PLANS_HISTORY = "syncplanshistory";
 export const DEFAULT_TBL_VAULT_RANDOM_ID_MAPPING = "vaultrandomidmapping";
 export const DEFAULT_TBL_LOGGER_OUTPUT = "loggeroutput";
+export const DEFAULT_TBL_CONFIG_DIR_SNAPSHOT = "configdirsnapshot";
 
 export interface FileFolderHistoryRecord {
   key: string;
@@ -51,6 +52,21 @@ interface SyncPlanRecord {
   vaultRandomID: string;
 }
 
+export interface ConfigDirSnapshotRecord {
+  key: string;
+  keyType: "folder" | "file";
+  vaultRandomID: string;
+}
+
+export interface ConfigDirSnapshotMetaRecord {
+  configDir: string;
+  syncConfigDir: boolean;
+  syncTrash: boolean;
+  syncBookmarks: boolean;
+  capturedAt: number;
+  vaultRandomID: string;
+}
+
 export interface InternalDBs {
   versionTbl: LocalForage;
   fileHistoryTbl: LocalForage;
@@ -58,6 +74,7 @@ export interface InternalDBs {
   syncPlansTbl: LocalForage;
   vaultRandomIDMappingTbl: LocalForage;
   loggerOutputTbl: LocalForage;
+  configDirSnapshotTbl: LocalForage;
 }
 
 /**
@@ -148,6 +165,21 @@ const migrateDBsFrom20220108To20220326 = async (
   await db.versionTbl.setItem("version", newVer);
 };
 
+/**
+ * no need to do anything except changing version
+ * we just add a new snapshot table for config dir deletions.
+ * @param db
+ * @param vaultRandomID
+ */
+const migrateDBsFrom20220326To20260420 = async (
+  db: InternalDBs,
+  vaultRandomID: string
+) => {
+  const oldVer = 20220326;
+  const newVer = 20260420;
+  await db.versionTbl.setItem("version", newVer);
+};
+
 const migrateDBs = async (
   db: InternalDBs,
   oldVer: number,
@@ -163,10 +195,24 @@ const migrateDBs = async (
   if (oldVer === 20220108 && newVer === 20220326) {
     return await migrateDBsFrom20220108To20220326(db, vaultRandomID);
   }
+  if (oldVer === 20220326 && newVer === 20260420) {
+    return await migrateDBsFrom20220326To20260420(db, vaultRandomID);
+  }
   if (oldVer === 20211114 && newVer === 20220326) {
     // TODO: more steps with more versions in the future
     await migrateDBsFrom20211114To20220108(db, vaultRandomID);
     await migrateDBsFrom20220108To20220326(db, vaultRandomID);
+    return;
+  }
+  if (oldVer === 20220108 && newVer === 20260420) {
+    await migrateDBsFrom20220108To20220326(db, vaultRandomID);
+    await migrateDBsFrom20220326To20260420(db, vaultRandomID);
+    return;
+  }
+  if (oldVer === 20211114 && newVer === 20260420) {
+    await migrateDBsFrom20211114To20220108(db, vaultRandomID);
+    await migrateDBsFrom20220108To20220326(db, vaultRandomID);
+    await migrateDBsFrom20220326To20260420(db, vaultRandomID);
     return;
   }
   if (newVer < oldVer) {
@@ -206,6 +252,10 @@ export const prepareDBs = async (
     loggerOutputTbl: localforage.createInstance({
       name: DEFAULT_DB_NAME,
       storeName: DEFAULT_TBL_LOGGER_OUTPUT,
+    }),
+    configDirSnapshotTbl: localforage.createInstance({
+      name: DEFAULT_DB_NAME,
+      storeName: DEFAULT_TBL_CONFIG_DIR_SNAPSHOT,
     }),
   } as InternalDBs;
 
@@ -522,6 +572,66 @@ export const readAllSyncPlanRecordTextsByVault = async (
   } else {
     return records.map((x) => x.syncPlan);
   }
+};
+
+const CONFIG_DIR_SNAPSHOT_META_KEY = "__meta__";
+
+export const loadConfigDirSnapshotByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string
+) => {
+  const records: ConfigDirSnapshotRecord[] = [];
+  await db.configDirSnapshotTbl.iterate((value, key, iterationNumber) => {
+    if (
+      key.startsWith(`${vaultRandomID}\t`) &&
+      key !== `${vaultRandomID}\t${CONFIG_DIR_SNAPSHOT_META_KEY}`
+    ) {
+      records.push(value as ConfigDirSnapshotRecord);
+    }
+  });
+  records.sort((a, b) => a.key.localeCompare(b.key));
+  return records;
+};
+
+export const getConfigDirSnapshotMetaByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string
+) => {
+  const meta = (await db.configDirSnapshotTbl.getItem(
+    `${vaultRandomID}\t${CONFIG_DIR_SNAPSHOT_META_KEY}`
+  )) as ConfigDirSnapshotMetaRecord;
+  if (meta === null) {
+    return undefined;
+  }
+  return meta;
+};
+
+export const replaceConfigDirSnapshotByVault = async (
+  db: InternalDBs,
+  snapshot: ConfigDirSnapshotRecord[],
+  meta: ConfigDirSnapshotMetaRecord,
+  vaultRandomID: string
+) => {
+  const keys = (await db.configDirSnapshotTbl.keys()).filter((key) =>
+    key.startsWith(`${vaultRandomID}\t`)
+  );
+  const ps: Promise<any>[] = keys.map((key) =>
+    db.configDirSnapshotTbl.removeItem(key)
+  );
+  await Promise.all(ps);
+
+  const writes: Promise<any>[] = [
+    db.configDirSnapshotTbl.setItem(
+      `${vaultRandomID}\t${CONFIG_DIR_SNAPSHOT_META_KEY}`,
+      meta
+    ),
+  ];
+  snapshot.forEach((entry) => {
+    writes.push(
+      db.configDirSnapshotTbl.setItem(`${vaultRandomID}\t${entry.key}`, entry)
+    );
+  });
+  await Promise.all(writes);
 };
 
 /**

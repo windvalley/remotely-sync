@@ -29,7 +29,12 @@ import {
   InternalDBs,
   insertLoggerOutputByVault,
   clearExpiredLoggerOutputRecords,
-  clearExpiredSyncPlanRecords, FileFolderHistoryRecord,
+  clearExpiredSyncPlanRecords,
+  FileFolderHistoryRecord,
+  loadConfigDirSnapshotByVault,
+  getConfigDirSnapshotMetaByVault,
+  replaceConfigDirSnapshotByVault,
+  ConfigDirSnapshotMetaRecord,
 } from "./localdb";
 import { RemoteClient } from "./remote";
 import {
@@ -54,10 +59,17 @@ import {
   SyncStatusType,
   doActualSync, 
   getSyncPlan, 
-  isPasswordOk
+  isPasswordOk,
+  shouldSkipSyncItem,
 } from "./sync";
 import { messyConfigToNormal, normalConfigToMessy } from "./configPersist";
 import { ObsConfigDirFileType, listFilesInObsFolder } from "./obsFolderLister";
+import {
+  buildConfigDirSnapshotRecords,
+  collectRecreatedPluginRoots,
+  isConfigDirSnapshotMetaCompatible,
+  synthesizeDeletedConfigDirRecords,
+} from "./configDirSnapshot";
 import { I18n } from "./i18n";
 import type { LangType, LangTypeAndAuto, TransItemType } from "./i18n";
 
@@ -264,8 +276,11 @@ export default class RemotelySavePlugin extends Plugin {
 
       this.updateSyncStatus("getting_local_meta");
       const local = this.app.vault.getAllLoadedFiles();
-      const localHistory = await this.getLocalHistory();
-      let localConfigDirContents: ObsConfigDirFileType[] = await listFilesInObsFolder(this.app.vault, this.manifest.name, this.settings.syncTrash);
+      let localConfigDirContents: ObsConfigDirFileType[] = await listFilesInObsFolder(this.app.vault, this.manifest.id, this.settings.syncTrash);
+      const {
+        localHistory,
+        recreatedPluginRoots,
+      } = await this.getLocalHistory(localConfigDirContents);
 
       getNotice(
         t("syncrun_step6", {
@@ -275,7 +290,7 @@ export default class RemotelySavePlugin extends Plugin {
 
       this.updateSyncStatus("generating_plan");
 
-      const { plan, sortedKeys, deletions, sizesGoWrong } = await this.getSyncPlan(remoteStates, local, localConfigDirContents, origMetadataOnRemote, localHistory, client, triggerSource);
+      const { plan, sortedKeys, deletions, sizesGoWrong } = await this.getSyncPlan(remoteStates, local, localConfigDirContents, origMetadataOnRemote, localHistory, recreatedPluginRoots, client, triggerSource);
 
       await insertSyncPlanRecordByVault(this.db, plan, this.vaultRandomID);
 
@@ -291,6 +306,7 @@ export default class RemotelySavePlugin extends Plugin {
 
         this.updateSyncStatus("syncing");
         await this.doActualSync(client, plan, sortedKeys, metadataFile, origMetadataOnRemote, sizesGoWrong, deletions, self);
+        await this.saveConfigDirSnapshot();
       } else {
         this.updateSyncStatus("syncing");
         getNotice(
@@ -384,13 +400,14 @@ export default class RemotelySavePlugin extends Plugin {
     );
   }
 
-  private async getSyncPlan(remoteStates: FileOrFolderMixedState[], local: TAbstractFile[], localConfigDirContents: ObsConfigDirFileType[], origMetadataOnRemote: MetadataOnRemote, localHistory: FileFolderHistoryRecord[], client: RemoteClient, triggerSource: "manual" | "auto" | "autoOnceInit" | "dry") {
+  private async getSyncPlan(remoteStates: FileOrFolderMixedState[], local: TAbstractFile[], localConfigDirContents: ObsConfigDirFileType[], origMetadataOnRemote: MetadataOnRemote, localHistory: FileFolderHistoryRecord[], recreatedPluginRoots: Set<string>, client: RemoteClient, triggerSource: "manual" | "auto" | "autoOnceInit" | "dry") {
     return await getSyncPlan(
       remoteStates,
       local,
       localConfigDirContents,
       origMetadataOnRemote.deletions,
       localHistory,
+      recreatedPluginRoots,
       client.serviceType,
       triggerSource,
       this.app.vault,
@@ -399,14 +416,132 @@ export default class RemotelySavePlugin extends Plugin {
       this.settings.syncBookmarks,
       this.app.vault.configDir,
       this.settings.syncUnderscoreItems,
+      this.manifest.id,
       this.settings.skipSizeLargerThan,
       this.settings.password
     );
   }
 
-  private async getLocalHistory() {
-    return await loadFileHistoryTableByVault(
+  private shouldTrackConfigDirSnapshot() {
+    return (
+      this.settings.syncConfigDir ||
+      this.settings.syncTrash ||
+      this.settings.syncBookmarks
+    );
+  }
+
+  private isTrackedConfigDirKey(key: string) {
+    return !shouldSkipSyncItem(
+      key,
+      this.settings.syncConfigDir,
+      this.settings.syncUnderscoreItems,
+      this.settings.syncTrash,
+      this.settings.syncBookmarks,
+      this.app.vault.configDir,
+      this.manifest.id
+    );
+  }
+
+  private getConfigDirSnapshotMeta(
+    capturedAt: number = Date.now()
+  ): ConfigDirSnapshotMetaRecord {
+    return {
+      configDir: this.app.vault.configDir,
+      syncConfigDir: this.settings.syncConfigDir,
+      syncTrash: this.settings.syncTrash,
+      syncBookmarks: this.settings.syncBookmarks,
+      capturedAt: capturedAt,
+      vaultRandomID: this.vaultRandomID,
+    };
+  }
+
+  private async getLocalHistory(localConfigDirContents?: ObsConfigDirFileType[]) {
+    const localHistory = await loadFileHistoryTableByVault(
       this.db,
+      this.vaultRandomID
+    );
+    let recreatedPluginRoots = new Set<string>();
+
+    if (!this.shouldTrackConfigDirSnapshot() || localConfigDirContents === undefined) {
+      return {
+        localHistory: localHistory,
+        recreatedPluginRoots: recreatedPluginRoots,
+      };
+    }
+
+    const snapshotMeta = await getConfigDirSnapshotMetaByVault(
+      this.db,
+      this.vaultRandomID
+    );
+    const currentScope = this.getConfigDirSnapshotMeta(snapshotMeta?.capturedAt);
+    if (!isConfigDirSnapshotMetaCompatible(snapshotMeta, currentScope)) {
+      return {
+        localHistory: localHistory,
+        recreatedPluginRoots: recreatedPluginRoots,
+      };
+    }
+
+    const snapshot = await loadConfigDirSnapshotByVault(this.db, this.vaultRandomID);
+    recreatedPluginRoots = collectRecreatedPluginRoots(
+      snapshot,
+      localConfigDirContents,
+      this.app.vault.configDir
+    );
+    if (snapshot.length === 0) {
+      return {
+        localHistory: localHistory,
+        recreatedPluginRoots: recreatedPluginRoots,
+      };
+    }
+
+    const synthesized = synthesizeDeletedConfigDirRecords(
+      snapshot,
+      localConfigDirContents,
+      localHistory,
+      (key) => this.isTrackedConfigDirKey(key),
+      Date.now(),
+      this.vaultRandomID
+    );
+
+    if (synthesized.length === 0) {
+      return {
+        localHistory: localHistory,
+        recreatedPluginRoots: recreatedPluginRoots,
+      };
+    }
+
+    log.debug("synthesized config dir deletions: ", synthesized.map((x) => x.key));
+    return {
+      localHistory: [...localHistory, ...synthesized].sort(
+        (a, b) => a.actionWhen - b.actionWhen
+      ),
+      recreatedPluginRoots: recreatedPluginRoots,
+    };
+  }
+
+  private async saveConfigDirSnapshot(localConfigDirContents?: ObsConfigDirFileType[]) {
+    if (!this.shouldTrackConfigDirSnapshot()) {
+      return;
+    }
+
+    const contents =
+      localConfigDirContents ??
+      (await listFilesInObsFolder(
+        this.app.vault,
+        this.manifest.id,
+        this.settings.syncTrash
+      ));
+
+    const snapshot = buildConfigDirSnapshotRecords(
+      contents,
+      (key) => this.isTrackedConfigDirKey(key),
+      this.vaultRandomID
+    );
+
+    await replaceConfigDirSnapshotByVault(
+      this.db,
+      snapshot,
+      this.getConfigDirSnapshotMeta(),
       this.vaultRandomID
     );
   }
@@ -1229,7 +1364,7 @@ export default class RemotelySavePlugin extends Plugin {
       for (let i = 0; i < localConfigContents.length; i++) {
         const file = localConfigContents[i];
 
-        if (file.key.includes(".obsidian/plugins/remotely-secure/")) {
+        if (file.key.includes(`${this.app.vault.configDir}/plugins/${this.manifest.id}/`)) {
           continue;
         }
 
@@ -1323,14 +1458,17 @@ export default class RemotelySavePlugin extends Plugin {
     );
 
     const local = this.app.vault.getAllLoadedFiles();
-    const localHistory = await this.getLocalHistory();
     let localConfigDirContents: ObsConfigDirFileType[] = await listFilesInObsFolder(this.app.vault, this.manifest.id, this.settings.syncTrash);
+    const {
+      localHistory,
+      recreatedPluginRoots,
+    } = await this.getLocalHistory(localConfigDirContents);
     const origMetadataOnRemote = await this.fetchMetadataFromRemote(metadataFile, client);
 
 
     const {
       plan
-    } = await this.getSyncPlan(remoteStates, local, localConfigDirContents, origMetadataOnRemote, localHistory, client, "auto");
+    } = await this.getSyncPlan(remoteStates, local, localConfigDirContents, origMetadataOnRemote, localHistory, recreatedPluginRoots, client, "auto");
     return plan;
   }
 

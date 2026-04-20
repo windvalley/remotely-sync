@@ -93,7 +93,7 @@ P3: Nice to have, or cosmetic issue. Does not impact sync.
 
 Building the project:
 ```
-git clone https://github.com/sboesen/remotely-sync
+git clone --recurse-submodules https://github.com/sboesen/remotely-sync
 cd remotely-sync
 npm install
 ```

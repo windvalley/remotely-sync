@@ -169,6 +169,8 @@ export interface FileOrFolderMixedState {
   decisionBranch?: number;
   syncDone?: "done";
   remoteEncryptedKey?: string;
+  forceRemoteDelete?: boolean;
+  forceRemoteDeleteRoot?: string;
 
   mtimeLocalFmt?: string;
   mtimeRemoteFmt?: string;

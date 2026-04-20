@@ -28,11 +28,14 @@ const isFolderToSkip = (x: string) => {
 };
 
 const isPluginDirItself = (x: string, pluginId: string) => {
+  if (pluginId === undefined || pluginId === "") {
+    return false;
+  }
   return (
-    x === "remotely-secure" ||
-    x === "remotely-secure/" ||
-    x.endsWith("/remotely-secure") ||
-    x.endsWith("/remotely-secure/")
+    x === pluginId ||
+    x === `${pluginId}/` ||
+    x.endsWith(`/${pluginId}`) ||
+    x.endsWith(`/${pluginId}/`)
   );
 };
 
