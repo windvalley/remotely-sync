@@ -1,5 +1,7 @@
 # obsidian-vault-sync
 
+[English](./README.md) | [简体中文](./README.zh-CN.md)
+
 **obsidian-vault-sync** is an Obsidian sync plugin for S3, WebDAV, Dropbox, and OneDrive. It started from the *Remotely Save* codebase, but this repository now treats `obsidian-vault-sync` as a fully new plugin identity.
 
 The Git repository, plugin directory, manifest id, and the name shown inside Obsidian are all `obsidian-vault-sync`.
