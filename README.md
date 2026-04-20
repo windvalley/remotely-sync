@@ -87,7 +87,7 @@ You are greatly welcome to ask questions, post any suggestions, or report any bu
 - Option #1: Use [Obsidian42 - BRAT](https://github.com/TfTHacker/obsidian42-brat) and add `windvalley/obsidian-vault-sync`.
 - Option #2: [![GitHub release (latest by SemVer and asset including pre-releases)](https://img.shields.io/github/downloads-pre/windvalley/obsidian-vault-sync/latest/main.js?sort=semver)](https://github.com/windvalley/obsidian-vault-sync/releases) Manually download `main.js`, `manifest.json`, and `styles.css` from the latest release.
 - Option #3: Build from source.
-- If you build Dropbox / OneDrive support yourself, configure the new OAuth app credentials in `.env` before running `npm run build2`.
+- If you build Dropbox / OneDrive support yourself, configure the new OAuth app credentials in `.env` before running `npm run build`.
 
 ## Contributing
 
@@ -109,17 +109,17 @@ cp .env.example.txt .env
 
 Running development build (watches for changes and recompiles)
 ```
-npm run dev2
+npm run dev
 ```
 
 Building a production build
 ```
-npm run build2
+npm run build
 ```
 
 Testing:
 ```
-cp main.js styles.css manifest.json /your/path/to/vault/.obsidian/plugins/obsidian-vault-sync
+cp dist/main.js dist/styles.css dist/manifest.json /your/path/to/vault/.obsidian/plugins/obsidian-vault-sync
 ```
 
 Open development tools and Cmd+r or Ctrl+r to refresh the Obsidian app, quickly reloading the plugin.
@@ -142,7 +142,7 @@ Open development tools and Cmd+r or Ctrl+r to refresh the Obsidian app, quickly 
 
 - **This plugin is NOT an official Dropbox product.** The plugin just uses Dropbox's public API.
 - After the authorization, the plugin can read your name and email (which cannot be unselected on Dropbox api), and read and write files in your Dropbox's `/Apps/obsidian-vault-sync` folder.
-- Self-built releases need a Dropbox OAuth app key in `.env` before `npm run build2`.
+- Self-built releases need a Dropbox OAuth app key in `.env` before `npm run build`.
 - If you decide to authorize this plugin to connect to Dropbox, please go to plugin's settings, and choose Dropbox then follow the instructions. [More with screenshot is here](./docs/dropbox_review_material/README.md).
 - Password-based end-to-end encryption is also supported. But please be aware that **the vault name itself is not encrypted**.
 
@@ -151,7 +151,7 @@ Open development tools and Cmd+r or Ctrl+r to refresh the Obsidian app, quickly 
 - **This plugin is NOT an official Microsoft / OneDrive product.** The plugin just uses Microsoft's [OneDrive's public API](https://docs.microsoft.com/en-us/onedrive/developer/rest-api).
 - This plugin only works for "OneDrive for personal", and not works for "OneDrive for Business" (yet). See [#11](https://github.com/fyears/remotely-save/issues/11) to further details.
 - After the authorization, the plugin can read your name and email, and read and write files in your OneDrive's `/Apps/obsidian-vault-sync` folder.
-- Self-built releases need `ONEDRIVE_CLIENT_ID` and `ONEDRIVE_AUTHORITY` in `.env` before `npm run build2`.
+- Self-built releases need `ONEDRIVE_CLIENT_ID` and `ONEDRIVE_AUTHORITY` in `.env` before `npm run build`.
 - If you decide to authorize this plugin to connect to OneDrive, please go to plugin's settings, and choose OneDrive then follow the instructions.
 - Password-based end-to-end encryption is also supported. But please be aware that **the vault name itself is not encrypted**.
 - Syncing empty files is not supported.
