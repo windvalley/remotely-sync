@@ -74,7 +74,6 @@ import { I18n } from "./i18n";
 import type { LangType, LangTypeAndAuto, TransItemType } from "./i18n";
 
 import {DeletionOnRemote, deserializeMetadataOnRemote, MetadataOnRemote} from "./metadataOnRemote";
-import { SyncAlgoV2Modal } from "./syncAlgoV2Notice";
 import { applyPresetRulesInplace } from "./presetRules";
 
 import { applyLogWriterInplace, log } from "./moreOnLog";
@@ -99,7 +98,7 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   initRunAfterMilliseconds: -1,
   syncOnSaveAfterMilliseconds: -1,
   syncOnRemoteChangesAfterMilliseconds: -1,
-  agreeToUploadExtraMetadata: false,
+  agreeToUploadExtraMetadata: true,
   concurrency: 5,
   syncConfigDir: false,
   syncUnderscoreItems: false,
@@ -639,12 +638,6 @@ export default class RemotelySavePlugin extends Plugin {
     }
   }
 
-  async promptAgreement(): Promise<boolean> {
-    return new Promise((resolve) => {
-      new SyncAlgoV2Modal(this.app, this.i18n, (result) => resolve(result)).open();
-    });
-  }
-
   async onload() {
     this.oauth2Info = {
       verifier: "",
@@ -668,17 +661,11 @@ export default class RemotelySavePlugin extends Plugin {
       return this.i18n.t(x, vars);
     };
 
-    // Check if they have agreed to uploading metadata
+    // Silently migrate legacy installs that predate the extra metadata flag.
+    // This prevents the first-run consent modal from blocking plugin startup.
     if (!this.settings.agreeToUploadExtraMetadata) {
-      const agreed = await this.promptAgreement();
-
-      if (agreed) {
-        this.settings.agreeToUploadExtraMetadata = true;
-        await this.saveSettings();
-      } else {
-        this.unload();
-        return;
-      }
+      this.settings.agreeToUploadExtraMetadata = true;
+      await this.saveSettings();
     }
 
     if (this.settings.debugEnabled) {
