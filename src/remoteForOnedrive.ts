@@ -30,14 +30,32 @@ const REDIRECT_URI = `obsidian://${COMMAND_CALLBACK_ONEDRIVE}`;
 
 export const DEFAULT_ONEDRIVE_CONFIG: OnedriveConfig = {
   accessToken: "",
-  clientID: "dac010b9-192f-4237-bf53-167d36149942",
-  authority: "https://login.microsoftonline.com/common/",
+  clientID: process.env.DEFAULT_ONEDRIVE_CLIENT_ID || "",
+  authority:
+    process.env.DEFAULT_ONEDRIVE_AUTHORITY ||
+    "https://login.microsoftonline.com/common/",
   refreshToken: "",
   accessTokenExpiresInSeconds: 0,
   accessTokenExpiresAtTime: 0,
   deltaLink: "",
   username: "",
   credentialsShouldBeDeletedAtTime: 0,
+};
+
+const ensureOnedriveClientConfigured = (
+  clientID: string,
+  authority: string
+) => {
+  if (clientID.trim() === "") {
+    throw Error(
+      "OneDrive OAuth client ID is not configured. Set ONEDRIVE_CLIENT_ID in .env and rebuild obsidian-vault-sync."
+    );
+  }
+  if (authority.trim() === "") {
+    throw Error(
+      "OneDrive OAuth authority is not configured. Set ONEDRIVE_AUTHORITY in .env and rebuild obsidian-vault-sync."
+    );
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,6 +66,7 @@ export async function getAuthUrlAndVerifier(
   clientID: string,
   authority: string
 ) {
+  ensureOnedriveClientConfigured(clientID, authority);
   const cryptoProvider = new CryptoProvider();
   const { verifier, challenge } = await cryptoProvider.generatePkceCodes();
 
@@ -107,6 +126,7 @@ export const sendAuthReq = async (
   authCode: string,
   verifier: string
 ) => {
+  ensureOnedriveClientConfigured(clientID, authority);
   const rsp = await requestUrl({
     url: `${authority}/oauth2/v2.0/token`,
     method: "POST",
@@ -134,6 +154,7 @@ export const sendRefreshTokenReq = async (
   authority: string,
   refreshToken: string
 ) => {
+  ensureOnedriveClientConfigured(clientID, authority);
   // also use Obsidian request to bypass CORS issue.
   const body = new URLSearchParams({
     tenant: "consumers",
@@ -231,40 +252,11 @@ const fromDriveItemToRemoteItem = (
 ): RemoteItem => {
   let key = "";
 
-  // possible prefix:
-  // pure english: /drive/root:/Apps/remotely-secure/${remoteBaseDir}
-  // or localized, e.g.: /drive/root:/应用/remotely-secure/${remoteBaseDir}
-  const FIRST_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/Remotely Sync\//g;
-  // or the root is absolute path /Livefolders,
-  // e.g.: /Livefolders/应用/remotely-secure/${remoteBaseDir}
-  const SECOND_COMMON_PREFIX_REGEX = /^\/Livefolders\/[^\/]+\/Remotely Sync\//g;
-
-  // another possibile prefix
+  // Another possible prefix:
   const THIRD_COMMON_PREFIX_RAW = `/drive/items/`;
 
-  // Prefix from before name change
-  const FOURTH_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/Remotely Secure\//g;
-
   const fullPathOriginal = `${x.parentReference.path}/${x.name}`;
-  const matchFirstPrefixRes = fullPathOriginal.match(FIRST_COMMON_PREFIX_REGEX);
-  const matchSecondPrefixRes = fullPathOriginal.match(
-    SECOND_COMMON_PREFIX_REGEX
-  );
-  const matchFourthPrefixRes = fullPathOriginal.match(FOURTH_COMMON_PREFIX_REGEX);
-
-  if (
-    matchFirstPrefixRes !== null &&
-    fullPathOriginal.startsWith(`${matchFirstPrefixRes[0]}${remoteBaseDir}`)
-  ) {
-    const foundPrefix = `${matchFirstPrefixRes[0]}${remoteBaseDir}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  } else if (
-    matchSecondPrefixRes !== null &&
-    fullPathOriginal.startsWith(`${matchSecondPrefixRes[0]}${remoteBaseDir}`)
-  ) {
-    const foundPrefix = `${matchSecondPrefixRes[0]}${remoteBaseDir}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  } else if (x.parentReference.path.startsWith(THIRD_COMMON_PREFIX_RAW)) {
+  if (x.parentReference.path.startsWith(THIRD_COMMON_PREFIX_RAW)) {
     // it's something like
     // /drive/items/<some_id>!<another_id>:/${remoteBaseDir}/<subfolder>
     // with uri encoded!
@@ -282,15 +274,28 @@ const fromDriveItemToRemoteItem = (
         )}`
       );
     }
-  } else if (matchFourthPrefixRes !== null && fullPathOriginal.startsWith(`${matchFourthPrefixRes[0]}${remoteBaseDir}`)) {
-    const foundPrefix = `${matchFourthPrefixRes[0]}${remoteBaseDir}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
   } else {
-    throw Error(
-      `we meet file/folder and do not know how to deal with it:\n${constructFromDriveItemToRemoteItemError(
-        x
-      )}`
-    );
+    const decodedPath = decodeURIComponent(fullPathOriginal);
+    if (decodedPath.startsWith("/drive/root:/")) {
+      const pathAfterColon = decodedPath.slice(decodedPath.indexOf(":") + 1);
+      const segments = pathAfterColon.split("/").filter((segment) => segment !== "");
+      if (segments.length >= 3 && segments[2] === remoteBaseDir) {
+        key = segments.slice(3).join("/");
+      }
+    } else if (decodedPath.startsWith("/Livefolders/")) {
+      const segments = decodedPath.split("/").filter((segment) => segment !== "");
+      if (segments.length >= 4 && segments[3] === remoteBaseDir) {
+        key = segments.slice(4).join("/");
+      }
+    }
+
+    if (key === "") {
+      throw Error(
+        `we meet file/folder and do not know how to deal with it:\n${constructFromDriveItemToRemoteItemError(
+          x
+        )}`
+      );
+    }
   }
 
   const isFolder = "folder" in x;

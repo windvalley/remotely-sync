@@ -115,7 +115,7 @@ export const listFilesInObsFolder = async (
             }
             
             if (isInsideSelfPlugin && !isLikelyPluginSubFiles(iter2)) {
-              // special treatment for remotely-secure folder
+              // special treatment for the current plugin folder
               continue;
             }
             q.push(iter2);
@@ -125,7 +125,7 @@ export const listFilesInObsFolder = async (
               continue;
             }
             if (isInsideSelfPlugin && !isLikelyPluginSubFiles(iter2)) {
-              // special treatment for remotely-secure folder
+              // special treatment for the current plugin folder
               continue;
             }
             q.push(iter2);

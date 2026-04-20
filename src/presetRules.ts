@@ -1,5 +1,5 @@
 import type {
-  RemotelySavePluginSettings,
+  ObsidianVaultSyncPluginSettings,
   WebdavConfig,
   WebdavDepthType,
 } from "./baseTypes";
@@ -53,7 +53,7 @@ export const applyWebdavPresetRulesInplace = (
 };
 
 export const applyPresetRulesInplace = (
-  settings: RemotelySavePluginSettings | undefined
+  settings: ObsidianVaultSyncPluginSettings | undefined
 ) => {
   if (settings === undefined) {
     return {

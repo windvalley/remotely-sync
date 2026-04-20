@@ -26,13 +26,21 @@ import { log } from "./moreOnLog";
 
 export const DEFAULT_DROPBOX_CONFIG: DropboxConfig = {
   accessToken: "",
-  clientID: "06wqszi8qc5qd70",
+  clientID: process.env.DEFAULT_DROPBOX_APP_KEY || "",
   refreshToken: "",
   accessTokenExpiresInSeconds: 0,
   accessTokenExpiresAtTime: 0,
   accountID: "",
   username: "",
   credentialsShouldBeDeletedAtTime: 0,
+};
+
+const ensureDropboxAppKeyConfigured = (appKey: string) => {
+  if (appKey.trim() === "") {
+    throw Error(
+      "Dropbox OAuth app key is not configured. Set DROPBOX_APP_KEY in .env and rebuild obsidian-vault-sync."
+    );
+  }
 };
 
 export const getDropboxPath = (
@@ -174,6 +182,7 @@ export const getAuthUrlAndVerifier = async (
   appKey: string,
   needManualPatse: boolean = false
 ) => {
+  ensureDropboxAppKeyConfigured(appKey);
   const auth = new DropboxAuth({
     clientId: appKey,
   });
@@ -214,6 +223,7 @@ export const sendAuthReq = async (
   verifier: string,
   authCode: string
 ) => {
+  ensureDropboxAppKeyConfigured(appKey);
   const body = new URLSearchParams({
     code: authCode,
     grant_type: "authorization_code",
@@ -235,6 +245,7 @@ export const sendRefreshTokenReq = async (
   appKey: string,
   refreshToken: string
 ) => {
+  ensureDropboxAppKeyConfigured(appKey);
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,

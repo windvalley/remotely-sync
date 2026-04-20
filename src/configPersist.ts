@@ -1,7 +1,7 @@
 import { base64, base64url } from "rfc4648";
 import { reverseString } from "./misc";
 
-import type { RemotelySavePluginSettings } from "./baseTypes";
+import type { ObsidianVaultSyncPluginSettings } from "./baseTypes";
 
 import { log } from "./moreOnLog";
 
@@ -17,8 +17,8 @@ interface MessyConfigType {
  * this should accept the result after loadData();
  */
 export const messyConfigToNormal = (
-  x: MessyConfigType | RemotelySavePluginSettings | null | undefined
-): RemotelySavePluginSettings | null | undefined => {
+  x: MessyConfigType | ObsidianVaultSyncPluginSettings | null | undefined
+): ObsidianVaultSyncPluginSettings | null | undefined => {
   if (x === null || x === undefined) {
     return x as any;
   }
@@ -42,7 +42,7 @@ export const messyConfigToNormal = (
  * this should accept the result of original config
  */
 export const normalConfigToMessy = (
-  x: RemotelySavePluginSettings | null | undefined
+  x: ObsidianVaultSyncPluginSettings | null | undefined
 ) => {
   if (x === null || x === undefined) {
     return x;

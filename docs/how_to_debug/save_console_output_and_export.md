@@ -18,7 +18,7 @@ Trigger the sync manually (by clicking the icon on the ribbon sidebar). Somethin
 
 ## Export The Output And Read The Logs
 
-Go to the plugin settings, scroll down to the section "Debug" -> "Export Console Logs From DB", and click the button. A new file `log_hist_exported_on_....md` should be created inside the special folder `_debug_remotely_save/`. You could read it and hopefully find something useful.
+Go to the plugin settings, scroll down to the section "Debug" -> "Export Console Logs From DB", and click the button. A new file `log_hist_exported_on_....md` should be created inside the special folder `_debug_obsidian-vault-sync/`. You could read it and hopefully find something useful.
 
 ## Disable Saving The Output To DB
 

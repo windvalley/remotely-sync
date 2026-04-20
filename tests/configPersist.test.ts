@@ -1,13 +1,13 @@
 import * as chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 
-import { RemotelySavePluginSettings } from "../src/baseTypes";
+import { ObsidianVaultSyncPluginSettings } from "../src/baseTypes";
 import { messyConfigToNormal, normalConfigToMessy } from "../src/configPersist";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
-const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
+const DEFAULT_SETTINGS: ObsidianVaultSyncPluginSettings = {
   s3: {
     s3AccessKeyID: "acc",
   } as any,

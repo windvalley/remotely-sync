@@ -5,19 +5,19 @@ To apply for the production use of Dropbox API, some descriptions are needed to 
 ## Some Backgrounds
 
 1. Obsidian allows users to take notes using markdown files.
-2. The "app", remotely-save. is an unofficial Obsidian plugin, helping users download and upload ("sync") their notes from and to Dropbox.
-3. Technically, remotely-save is developed using web technologies.
+2. The app, obsidian-vault-sync, is an unofficial Obsidian plugin, helping users download and upload ("sync") their notes from and to Dropbox.
+3. Technically, obsidian-vault-sync is developed using web technologies.
 
 ## Api Usages
 
-1. remotely-save uses "App folder", to avoid unnecessary accessing users' other files.
-2. remotely-save uses "account_info.read", to get the displayed username, so that users know which of their accounts has been logged in after OAuth steps.
-3. remotely-save uses "files.content.read", so that it can read the "last modified time", and the content of files on Dropbox. Under some conditions, the plugin would download the files. For example, the plugin would compare the last modified timestamps of the file in the local device and that on Dropbox, and if the timestamp on Dropbox is larger, the plugin would download the "newer" file from Dropbox to local.
-4. remotely-save uses "files.content.write", so that it can upload or overwrite the content of files on Dropbox. Under some conditions, the plugin would do that. For example, the plugin would compare the last modified timestamps of the file in the local device and that on Dropbox, and if the timestamp in the local device is larger, the plugin would upload the "newer" file from local to Dropbox, and overwrite that file on Dropbox.
+1. obsidian-vault-sync uses "App folder", to avoid unnecessary accessing users' other files.
+2. obsidian-vault-sync uses "account_info.read", to get the displayed username, so that users know which of their accounts has been logged in after OAuth steps.
+3. obsidian-vault-sync uses "files.content.read", so that it can read the "last modified time", and the content of files on Dropbox. Under some conditions, the plugin would download the files. For example, the plugin would compare the last modified timestamps of the file in the local device and that on Dropbox, and if the timestamp on Dropbox is larger, the plugin would download the "newer" file from Dropbox to local.
+4. obsidian-vault-sync uses "files.content.write", so that it can upload or overwrite the content of files on Dropbox. Under some conditions, the plugin would do that. For example, the plugin would compare the last modified timestamps of the file in the local device and that on Dropbox, and if the timestamp in the local device is larger, the plugin would upload the "newer" file from local to Dropbox, and overwrite that file on Dropbox.
 
 ## Steps
 
-Here are the steps to see the functionality of remotely-save.
+Here are the steps to see the functionality of obsidian-vault-sync.
 
 Most steps have screenshots.
 
@@ -30,13 +30,13 @@ Most steps have screenshots.
    ![step05](./attachments/step05.png)
 6. Click "setting" (a gear icon) on the button left of the sidebar.
    ![step06](./attachments/step06.png)
-7. In the settings panel, go to the "Community plugins" page, turn off the safe mode, and confirm to turn off the safe mode. Then click the "Browse" button for community plugins.
+7. In the settings panel, go to the "Community plugins" page, turn off the safe mode, and confirm to turn off the safe mode.
    ![step07](./attachments/step07.png)
-8. Search "Remotely Sync" and install on the result.
+8. Install `obsidian-vault-sync` using the distribution method provided for the build under review (for example release assets, BRAT, or a plugin listing if available).
    ![step08](./attachments/step08.png)
-9. After successful installing the plugin, go back to the "Community plugins" page, and enable the plugin.
+9. After the plugin is installed, go back to the "Community plugins" page, and enable the plugin.
    ![step09](./attachments/step09.png)
-10. Go to newly added "Remotely Sync" settings, select "Dropbox" in "Choose service", and click the "Auth" button.
+10. Go to newly added "obsidian-vault-sync" settings, select "Dropbox" in "Choose service", and click the "Auth" button.
     ![step10](./attachments/step10.png)
 11. The standard auth flow address is shown, users should click the address, and finish the auth steps on the website. Finally, the Dropbox website should automatically redirect users back to the Obsidian app.
     ![step11](./attachments/step11.png)

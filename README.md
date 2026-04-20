@@ -1,10 +1,12 @@
-# Remotely Sync
+# obsidian-vault-sync
 
-**Remotely Sync** is a fork of *Remotely Save*, the unofficial sync plugin for Obsidian. At the time of forking the *Remotely Save* plugin was not actively maintained and some security improvements were made to Remotely Save - please see the [list of security updates](#security-updates-from-remotely-save) made to *Remotely Save*. Note this plugin is not backwards compatible with Remotely Save, save your data locally and have a backup before using this plugin. See [migration guide](#migrating-from-remotely-save) instructions.
+**obsidian-vault-sync** is an Obsidian sync plugin for S3, WebDAV, Dropbox, and OneDrive. It started from the *Remotely Save* codebase, but this repository now treats `obsidian-vault-sync` as a fully new plugin identity.
 
-Note that some of the features will be merged into Remotely Save over time, and Remotely Sync is likely less stable at any point in time. If you want stability go with [Remotely Save](https://github.com/remotely-save/remotely-save)!
+The Git repository, plugin directory, manifest id, and the name shown inside Obsidian are all `obsidian-vault-sync`.
 
-If you like it or find it useful, please consider give it a [star ![GitHub Repo stars](https://img.shields.io/github/stars/sboesen/remotely-sync?style=social)](https://github.com/sboesen/remotely-sync) on Github.
+Existing `remotely-save`, `remotely-secure`, and `remotely-sync` installations, settings, OAuth grants, and remote metadata are not considered compatible. Treat this as a fresh install and use a fresh remote namespace.
+
+If you like it or find it useful, please consider give it a [star ![GitHub Repo stars](https://img.shields.io/github/stars/windvalley/obsidian-vault-sync?style=social)](https://github.com/windvalley/obsidian-vault-sync) on Github.
 
 Pull requests greatly appreciated! Please see [Contributing](#contributing) to get started.
 
@@ -18,9 +20,9 @@ Pull requests greatly appreciated! Please see [Contributing](#contributing) to g
 
 
 ## Security Updates from Remotely Save
-- Updated encryption to use [AES-GCM](https://github.com/sboesen/remotely-sync/commit/d9ad76e774b0b1cee2b36316058df926f4bfb2bf#diff-6ce8b79e4237671498e2b10caa08b379beaae2cd5e56415167b563d1536f6b74R57) which is more secure and authenticates the ciphertext when decrypting, making it harder to exploit [padding oracle attacks](https://cryptopals.com/sets/3/challenges/17).
-- Updated [salt](https://github.com/sboesen/remotely-sync/commit/d9ad76e774b0b1cee2b36316058df926f4bfb2bf#diff-6ce8b79e4237671498e2b10caa08b379beaae2cd5e56415167b563d1536f6b74R45) from 8 -> 16 bytes. [See note](https://github.com/sboesen/remotely-sync/issues/9)
-- Updated IV to not be derived from the user's password ([discussion](https://github.com/sboesen/remotely-sync/discussions/76#discussioncomment-7878678))
+- Updated encryption to use AES-GCM which is more secure and authenticates the ciphertext when decrypting, making it harder to exploit [padding oracle attacks](https://cryptopals.com/sets/3/challenges/17).
+- Updated salt from 8 -> 16 bytes.
+- Updated IV to not be derived from the user's password.
 - **No security guarantees**, but these are the issues I identified when reviewing the end-to-end encryption as implemented in remotely-save.
 
 ## Features
@@ -35,29 +37,35 @@ Pull requests greatly appreciated! Please see [Contributing](#contributing) to g
 - **Scheduled auto sync supported.** You can also manually trigger the sync using sidebar ribbon, or using the command from the command palette (or even bind the hot key combination to the command then press the hot key combination).
 - Sync on Save
 - Sync status bar
-- Syncing bookmarks by default (and other obsidian configuration files if enabled)
+- Syncing bookmarks by default, with optional syncing for other Obsidian configuration files and `.trash`
+- Snapshot-based delete tracking for synced config items, so removals under `.obsidian`, `bookmarks.json`, and `.trash` can be propagated on the next successful sync
 - **[Minimal Intrusive](./docs/minimal_intrusive_design.md).**
 - **Fully open source under [Apache-2.0 License](./LICENSE).**
 - **[Sync Algorithm open](./docs/sync_algorithm_v2.md) for discussion.**
 
 ## Limitations
 
-- **To support syncing deleted files, extra metadata will also be uploaded.** See [Minimal Intrusive](./docs/minimal_intrusive_design.md).
+- **To support syncing deleted files and synced config items, extra metadata is uploaded by default.** See [Minimal Intrusive](./docs/minimal_intrusive_design.md).
   - **No conflict resolution. No content-diff-and-patch algorithm.** All files and folders are compared using their local and remote "last modified time" and those with later "last modified time" win.
+- **Config-item deletion tracking needs a baseline snapshot from the previous successful sync.** If you just enabled config, bookmark, or trash syncing, run one successful sync first to establish that baseline.
 - **Cloud services cost you money.** Always be aware of the costs and pricing. Specifically, all the operations, including but not limited to downloading, uploading, listing all files, calling any api, storage sizes, may or may not cost you money.
 - **Some limitations from the browser environment.** More technical details are [in the doc](./docs/browser_env.md).
 - **You should protect your `data.json` file.** The file contains sensitive information.
   - It's strongly advised **NOT** to share your `data.json` file to anyone.
   - It's usually **NOT** a good idea to check the file into version control. By default, the plugin tries to create a `.gitignore` file inside the plugin directory if it doesn't exist, for ignoring `data.json` in the `git` version control. If you know exactly what it means and want to remove the setting, please modify the `.gitignore` file or set it to be empty.
 
-## Migrating from Remotely Save
-The easiest way to migrate from Remotely Save (or other forks) to Remotely Sync is:
+## Fresh Install / Migration
+The safest way to move from Remotely Save (or any older fork) to obsidian-vault-sync is:
 
 1. Make a local, unencrypted backup of your files (make sure to synchronize all changes across your devices)
-2. Disable the remotely-save plugin
-3. Enable remotely-sync and set a new encryption password
-4. Delete the encrypted files in your cloud provider (or make a new S3 bucket in this case)
-5. Perform a sync using remotely-sync
+2. Disable and uninstall the old plugin
+3. Install obsidian-vault-sync into `.obsidian/plugins/obsidian-vault-sync`
+4. Configure obsidian-vault-sync from scratch and set a new encryption password if needed
+5. Use a fresh remote namespace for the new plugin:
+   - S3 / OSS / Minio: use a new empty bucket
+   - WebDAV: use a new `remoteBaseDir`
+   - Dropbox / OneDrive: build or install a release that already contains the new OAuth app credentials, then authorize it as a new app and keep a distinct `remoteBaseDir`
+6. Perform the first sync with obsidian-vault-sync
 
 ## Credit
 * Thanks to @fyears for the original Remotely Save plugin
@@ -71,19 +79,19 @@ The easiest way to migrate from Remotely Save (or other forks) to Remotely Sync 
 
 You are greatly welcome to ask questions, post any suggestions, or report any bugs! Pull requests also greatly appreciated. The project is mainly maintained on GitHub:
 
-- Questions: [GitHub repo Discussions](https://github.com/sboesen/remotely-sync/discussions)
-- Suggestions: also in [GitHub repo Discussions](https://github.com/sboesen/remotely-sync/discussions)
-- Bugs: [GitHub repo Issues](https://github.com/sboesen/remotely-sync/issues) (NOT Discussion)
+- Questions, suggestions, and bugs: [GitHub repo Issues](https://github.com/windvalley/obsidian-vault-sync/issues)
+- Pull requests: [GitHub repo Pull Requests](https://github.com/windvalley/obsidian-vault-sync/pulls)
 
 ## Download and Install
 
-- Option #1: Search in the official "community plugin list", or visit this: [https://obsidian.md/plugins?id=remotely-sync](https://obsidian.md/plugins?id=remotely-sync) (which should redirect you into Obsidian app), then install the plugin.
-- Option #2: You can also use [Obsidian42 - BRAT](https://github.com/TfTHacker/obsidian42-brat) to install this plugin. Input `sboesen/remotely-sync` in the configuration of BRAT.
-- Option #3: [![GitHub release (latest by SemVer and asset including pre-releases)](https://img.shields.io/github/downloads-pre/sboesen/remotely-sync/latest/main.js?sort=semver)](https://github.com/sboesen/remotely-sync/releases) Manually download assets (`main.js`, `manifest.json`, `styles.css`) from the latest release.
+- Option #1: Use [Obsidian42 - BRAT](https://github.com/TfTHacker/obsidian42-brat) and add `windvalley/obsidian-vault-sync`.
+- Option #2: [![GitHub release (latest by SemVer and asset including pre-releases)](https://img.shields.io/github/downloads-pre/windvalley/obsidian-vault-sync/latest/main.js?sort=semver)](https://github.com/windvalley/obsidian-vault-sync/releases) Manually download `main.js`, `manifest.json`, and `styles.css` from the latest release.
+- Option #3: Build from source.
+- If you build Dropbox / OneDrive support yourself, configure the new OAuth app credentials in `.env` before running `npm run build2`.
 
 ## Contributing
 
-Please see our [GitHub project](https://github.com/users/sboesen/projects/1) for a prioritized list of issues.
+Please see [GitHub Issues](https://github.com/windvalley/obsidian-vault-sync/issues) for current issues and priorities.
 
 General priorities (may change):
 P0: Top priority, sync broken or risk of data loss for all remote providers.
@@ -93,9 +101,10 @@ P3: Nice to have, or cosmetic issue. Does not impact sync.
 
 Building the project:
 ```
-git clone --recurse-submodules https://github.com/sboesen/remotely-sync
-cd remotely-sync
+git clone --recurse-submodules https://github.com/windvalley/obsidian-vault-sync
+cd obsidian-vault-sync
 npm install
+cp .env.example.txt .env
 ```
 
 Running development build (watches for changes and recompiles)
@@ -110,8 +119,9 @@ npm run build2
 
 Testing:
 ```
-cp main.js styles.css manifest.json /your/path/to/vault/.obsidian/plugins/remotely-sync
+cp main.js styles.css manifest.json /your/path/to/vault/.obsidian/plugins/obsidian-vault-sync
 ```
+
 Open development tools and Cmd+r or Ctrl+r to refresh the Obsidian app, quickly reloading the plugin.
 
 ## Usage
@@ -131,7 +141,8 @@ Open development tools and Cmd+r or Ctrl+r to refresh the Obsidian app, quickly 
 ### Dropbox
 
 - **This plugin is NOT an official Dropbox product.** The plugin just uses Dropbox's public API.
-- After the authorization, the plugin can read your name and email (which cannot be unselected on Dropbox api), and read and write files in your Dropbox's `/Apps/remotely-sync` folder.
+- After the authorization, the plugin can read your name and email (which cannot be unselected on Dropbox api), and read and write files in your Dropbox's `/Apps/obsidian-vault-sync` folder.
+- Self-built releases need a Dropbox OAuth app key in `.env` before `npm run build2`.
 - If you decide to authorize this plugin to connect to Dropbox, please go to plugin's settings, and choose Dropbox then follow the instructions. [More with screenshot is here](./docs/dropbox_review_material/README.md).
 - Password-based end-to-end encryption is also supported. But please be aware that **the vault name itself is not encrypted**.
 
@@ -139,10 +150,11 @@ Open development tools and Cmd+r or Ctrl+r to refresh the Obsidian app, quickly 
 
 - **This plugin is NOT an official Microsoft / OneDrive product.** The plugin just uses Microsoft's [OneDrive's public API](https://docs.microsoft.com/en-us/onedrive/developer/rest-api).
 - This plugin only works for "OneDrive for personal", and not works for "OneDrive for Business" (yet). See [#11](https://github.com/fyears/remotely-save/issues/11) to further details.
-- After the authorization, the plugin can read your name and email, and read and write files in your OneDrive's `/Apps/remotely-sync` folder.
+- After the authorization, the plugin can read your name and email, and read and write files in your OneDrive's `/Apps/obsidian-vault-sync` folder.
+- Self-built releases need `ONEDRIVE_CLIENT_ID` and `ONEDRIVE_AUTHORITY` in `.env` before `npm run build2`.
 - If you decide to authorize this plugin to connect to OneDrive, please go to plugin's settings, and choose OneDrive then follow the instructions.
 - Password-based end-to-end encryption is also supported. But please be aware that **the vault name itself is not encrypted**.
-- Syncing empty files is not supported (see [related issue](https://github.com/sboesen/remotely-sync/issues/67))
+- Syncing empty files is not supported.
 
 ### webdav
 
@@ -159,7 +171,7 @@ Open development tools and Cmd+r or Ctrl+r to refresh the Obsidian app, quickly 
 
 ### Alibaba Cloud OSS and Minio
 - Use the S3 configuration
-- Enable "Disable S3 metadata sync" if you get 403 or 400 errors. This means not syncing modification time until it is [fixed](https://github.com/sboesen/remotely-sync/issues/70).
+- Enable "Disable S3 metadata sync" if you get 403 or 400 errors. This means not syncing modification time until the provider-specific compatibility issue is resolved.
 
 
 ## Scheduled Auto Sync

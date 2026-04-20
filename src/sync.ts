@@ -97,8 +97,16 @@ export const isPasswordOk = async (
 
   const sanityCheckKey = remote[0].key;
   // Check if metadata is stored unencrypted if the password is blank
-  log.debug("password is blank? ", password == "", " remote has metadata? ", remote.some(item => item.key ==  '_remotely-secure-metadata-on-remote.json'));
-  if (password == "" && remote.some(item => item.key ==  '_remotely-secure-metadata-on-remote.json')) {
+  log.debug(
+    "password is blank? ",
+    password == "",
+    " remote has metadata? ",
+    remote.some((item) => item.key == DEFAULT_FILE_NAME_FOR_METADATAONREMOTE)
+  );
+  if (
+    password == "" &&
+    remote.some((item) => item.key == DEFAULT_FILE_NAME_FOR_METADATAONREMOTE)
+  ) {
     return {
       ok: true,
       reason: "no_password_both_sides"
@@ -280,7 +288,7 @@ export const shouldSkipSyncItem = (
   }
 
   if (syncConfigDir && isInsideObsFolder(key, configDir)) {
-    // Special exception for Remotely Sync's data.json file - always skip.
+    // Special exception for obsidian-vault-sync's data.json file - always skip.
     // No point to sync our plugin settings, causes endless syncing because we persist last sync time
     if (key === `${configDir}/plugins/${selfPluginID}/${FILE_NAME_FOR_DATA_JSON}`) {
       return true;

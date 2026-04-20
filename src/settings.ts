@@ -31,7 +31,7 @@ import {
   insertLoggerOutputByVault,
   clearExpiredLoggerOutputRecords,
 } from "./localdb";
-import type RemotelySavePlugin from "./main"; // unavoidable
+import type ObsidianVaultSyncPlugin from "./main"; // unavoidable
 import { RemoteClient } from "./remote";
 import {
   DEFAULT_DROPBOX_CONFIG,
@@ -58,10 +58,10 @@ import {DEFAULT_FILE_NAME_FOR_METADATAONREMOTE, DEFAULT_FILE_NAME_FOR_METADATAON
 import {getRemoteMetadata, uploadExtraMeta} from "./sync";
 
 class PasswordModal extends Modal {
-  plugin: RemotelySavePlugin;
+  plugin: ObsidianVaultSyncPlugin;
   newPassword: string;
 
-  constructor(app: App, plugin: RemotelySavePlugin, newPassword: string) {
+  constructor(app: App, plugin: ObsidianVaultSyncPlugin, newPassword: string) {
     super(app);
     this.plugin = plugin;
     this.newPassword = newPassword;
@@ -129,12 +129,12 @@ class PasswordModal extends Modal {
 }
 
 class ChangeRemoteBaseDirModal extends Modal {
-  readonly plugin: RemotelySavePlugin;
+  readonly plugin: ObsidianVaultSyncPlugin;
   readonly newRemoteBaseDir: string;
   readonly service: SUPPORTED_SERVICES_TYPE_WITH_REMOTE_BASE_DIR;
   constructor(
     app: App,
-    plugin: RemotelySavePlugin,
+    plugin: ObsidianVaultSyncPlugin,
     newRemoteBaseDir: string,
     service: SUPPORTED_SERVICES_TYPE_WITH_REMOTE_BASE_DIR
   ) {
@@ -224,13 +224,13 @@ class ChangeRemoteBaseDirModal extends Modal {
 }
 
 class DropboxAuthModal extends Modal {
-  readonly plugin: RemotelySavePlugin;
+  readonly plugin: ObsidianVaultSyncPlugin;
   readonly authDiv: HTMLDivElement;
   readonly revokeAuthDiv: HTMLDivElement;
   readonly revokeAuthSetting: Setting;
   constructor(
     app: App,
-    plugin: RemotelySavePlugin,
+    plugin: ObsidianVaultSyncPlugin,
     authDiv: HTMLDivElement,
     revokeAuthDiv: HTMLDivElement,
     revokeAuthSetting: Setting
@@ -386,13 +386,13 @@ class DropboxAuthModal extends Modal {
 }
 
 export class OnedriveAuthModal extends Modal {
-  readonly plugin: RemotelySavePlugin;
+  readonly plugin: ObsidianVaultSyncPlugin;
   readonly authDiv: HTMLDivElement;
   readonly revokeAuthDiv: HTMLDivElement;
   readonly revokeAuthSetting: Setting;
   constructor(
     app: App,
-    plugin: RemotelySavePlugin,
+    plugin: ObsidianVaultSyncPlugin,
     authDiv: HTMLDivElement,
     revokeAuthDiv: HTMLDivElement,
     revokeAuthSetting: Setting
@@ -451,12 +451,12 @@ export class OnedriveAuthModal extends Modal {
 }
 
 export class OnedriveRevokeAuthModal extends Modal {
-  readonly plugin: RemotelySavePlugin;
+  readonly plugin: ObsidianVaultSyncPlugin;
   readonly authDiv: HTMLDivElement;
   readonly revokeAuthDiv: HTMLDivElement;
   constructor(
     app: App,
-    plugin: RemotelySavePlugin,
+    plugin: ObsidianVaultSyncPlugin,
     authDiv: HTMLDivElement,
     revokeAuthDiv: HTMLDivElement
   ) {
@@ -521,11 +521,11 @@ export class OnedriveRevokeAuthModal extends Modal {
 }
 
 class SyncConfigDirModal extends Modal {
-  plugin: RemotelySavePlugin;
+  plugin: ObsidianVaultSyncPlugin;
   saveDropdownFunc: () => void;
   constructor(
     app: App,
-    plugin: RemotelySavePlugin,
+    plugin: ObsidianVaultSyncPlugin,
     saveDropdownFunc: () => void
   ) {
     super(app);
@@ -574,8 +574,8 @@ class SyncConfigDirModal extends Modal {
 }
 
 class ExportSettingsQrCodeModal extends Modal {
-  plugin: RemotelySavePlugin;
-  constructor(app: App, plugin: RemotelySavePlugin) {
+  plugin: ObsidianVaultSyncPlugin;
+  constructor(app: App, plugin: ObsidianVaultSyncPlugin) {
     super(app);
     this.plugin = plugin;
   }
@@ -652,11 +652,22 @@ const wrapTextWithPasswordHide = (text: TextComponent) => {
   return text;
 };
 
-export class RemotelySaveSettingTab extends PluginSettingTab {
-  readonly plugin: RemotelySavePlugin;
+const hasConfiguredDropboxOAuth = (plugin: ObsidianVaultSyncPlugin) => {
+  return plugin.settings.dropbox.clientID.trim() !== "";
+};
+
+const hasConfiguredOnedriveOAuth = (plugin: ObsidianVaultSyncPlugin) => {
+  return (
+    plugin.settings.onedrive.clientID.trim() !== "" &&
+    plugin.settings.onedrive.authority.trim() !== ""
+  );
+};
+
+export class ObsidianVaultSyncSettingTab extends PluginSettingTab {
+  readonly plugin: ObsidianVaultSyncPlugin;
   deletingRemoteMeta: boolean;
 
-  constructor(app: App, plugin: RemotelySavePlugin) {
+  constructor(app: App, plugin: ObsidianVaultSyncPlugin) {
     super(app, plugin);
     this.plugin = plugin;
     this.deletingRemoteMeta = false;
@@ -993,6 +1004,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .addButton(async (button) => {
         button.setButtonText(t("settings_dropbox_auth_button"));
         button.onClick(async () => {
+          if (!hasConfiguredDropboxOAuth(this.plugin)) {
+            new Notice(t("settings_dropbox_auth_missing_client_id"));
+            return;
+          }
           const modal = new DropboxAuthModal(
             this.app,
             this.plugin,
@@ -1142,6 +1157,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .addButton(async (button) => {
         button.setButtonText(t("settings_onedrive_auth_button"));
         button.onClick(async () => {
+          if (!hasConfiguredOnedriveOAuth(this.plugin)) {
+            new Notice(t("settings_onedrive_auth_missing_client_id"));
+            return;
+          }
           const modal = new OnedriveAuthModal(
             this.app,
             this.plugin,
@@ -1661,16 +1680,16 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
             this.plugin.toggleStatusBar(val);
 
             statusBarOptions.toggleClass(
-              "remotely-sync-hidden",
+              "obsidian-vault-sync-hidden",
               this.plugin.settings.enableStatusBarInfo !== true
             );
           });
       });
 
-    const statusBarOptions = basicDiv.createDiv({ cls: "remotely-sync-hidden" });
+    const statusBarOptions = basicDiv.createDiv({ cls: "obsidian-vault-sync-hidden" });
 
     statusBarOptions.toggleClass(
-      "remotely-sync-hidden",
+      "obsidian-vault-sync-hidden",
       this.plugin.settings.enableStatusBarInfo !== true
     );
 

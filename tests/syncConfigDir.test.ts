@@ -12,7 +12,7 @@ describe("Config directory sync rules", () => {
         true,
         false,
         ".obsidian",
-        "remotely-secure"
+        "obsidian-vault-sync"
       )
     ).to.equal(false);
 
@@ -24,7 +24,7 @@ describe("Config directory sync rules", () => {
         false,
         false,
         ".obsidian",
-        "remotely-secure"
+        "obsidian-vault-sync"
       )
     ).to.equal(true);
   });
@@ -38,7 +38,7 @@ describe("Config directory sync rules", () => {
         false,
         true,
         ".obsidian",
-        "remotely-secure"
+        "obsidian-vault-sync"
       )
     ).to.equal(false);
 
@@ -50,7 +50,7 @@ describe("Config directory sync rules", () => {
         false,
         false,
         ".obsidian",
-        "remotely-secure"
+        "obsidian-vault-sync"
       )
     ).to.equal(true);
   });
@@ -58,25 +58,25 @@ describe("Config directory sync rules", () => {
   it("should always skip the current plugin data.json inside config sync", () => {
     expect(
       shouldSkipSyncItem(
-        ".obsidian/plugins/remotely-sync/data.json",
+        ".obsidian/plugins/obsidian-vault-sync/data.json",
         true,
         false,
         false,
         true,
         ".obsidian",
-        "remotely-sync"
+        "obsidian-vault-sync"
       )
     ).to.equal(true);
 
     expect(
       shouldSkipSyncItem(
-        ".obsidian/plugins/remotely-sync/manifest.json",
+        ".obsidian/plugins/obsidian-vault-sync/manifest.json",
         true,
         false,
         false,
         true,
         ".obsidian",
-        "remotely-sync"
+        "obsidian-vault-sync"
       )
     ).to.equal(false);
   });
@@ -102,35 +102,35 @@ describe("Config directory sync rules", () => {
           mtime: 1,
           size: 0,
           folders: [
-            ".obsidian/plugins/remotely-sync",
+            ".obsidian/plugins/obsidian-vault-sync",
             ".obsidian/plugins/other-plugin",
           ],
           files: [],
         },
       ],
       [
-        ".obsidian/plugins/remotely-sync",
+        ".obsidian/plugins/obsidian-vault-sync",
         {
           type: "folder",
           ctime: 1,
           mtime: 1,
           size: 0,
-          folders: [".obsidian/plugins/remotely-sync/assets"],
+          folders: [".obsidian/plugins/obsidian-vault-sync/assets"],
           files: [
-            ".obsidian/plugins/remotely-sync/data.json",
-            ".obsidian/plugins/remotely-sync/main.js",
+            ".obsidian/plugins/obsidian-vault-sync/data.json",
+            ".obsidian/plugins/obsidian-vault-sync/main.js",
           ],
         },
       ],
       [
-        ".obsidian/plugins/remotely-sync/assets",
+        ".obsidian/plugins/obsidian-vault-sync/assets",
         {
           type: "folder",
           ctime: 1,
           mtime: 1,
           size: 0,
           folders: [],
-          files: [".obsidian/plugins/remotely-sync/assets/logo.svg"],
+          files: [".obsidian/plugins/obsidian-vault-sync/assets/logo.svg"],
         },
       ],
       [
@@ -165,7 +165,7 @@ describe("Config directory sync rules", () => {
         },
       ],
       [
-        ".obsidian/plugins/remotely-sync/data.json",
+        ".obsidian/plugins/obsidian-vault-sync/data.json",
         {
           type: "file",
           ctime: 1,
@@ -174,7 +174,7 @@ describe("Config directory sync rules", () => {
         },
       ],
       [
-        ".obsidian/plugins/remotely-sync/main.js",
+        ".obsidian/plugins/obsidian-vault-sync/main.js",
         {
           type: "file",
           ctime: 1,
@@ -183,7 +183,7 @@ describe("Config directory sync rules", () => {
         },
       ],
       [
-        ".obsidian/plugins/remotely-sync/assets/logo.svg",
+        ".obsidian/plugins/obsidian-vault-sync/assets/logo.svg",
         {
           type: "file",
           ctime: 1,
@@ -227,13 +227,13 @@ describe("Config directory sync rules", () => {
       },
     };
 
-    const listed = await listFilesInObsFolder(vault as any, "remotely-sync", false);
+    const listed = await listFilesInObsFolder(vault as any, "obsidian-vault-sync", false);
     const keys = listed.map((x) => x.key);
 
-    expect(keys).to.include(".obsidian/plugins/remotely-sync/data.json");
-    expect(keys).to.include(".obsidian/plugins/remotely-sync/main.js");
-    expect(keys).to.not.include(".obsidian/plugins/remotely-sync/assets/");
-    expect(keys).to.not.include(".obsidian/plugins/remotely-sync/assets/logo.svg");
+    expect(keys).to.include(".obsidian/plugins/obsidian-vault-sync/data.json");
+    expect(keys).to.include(".obsidian/plugins/obsidian-vault-sync/main.js");
+    expect(keys).to.not.include(".obsidian/plugins/obsidian-vault-sync/assets/");
+    expect(keys).to.not.include(".obsidian/plugins/obsidian-vault-sync/assets/logo.svg");
     expect(keys).to.include(".obsidian/plugins/other-plugin/assets/logo.svg");
   });
 });

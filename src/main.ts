@@ -10,7 +10,7 @@ import {
 import cloneDeep from "lodash/cloneDeep";
 import type {
   FileOrFolderMixedState, RemoteItem,
-  RemotelySavePluginSettings,
+  ObsidianVaultSyncPluginSettings,
   SyncTriggerSourceType,
 } from "./baseTypes";
 import {
@@ -51,7 +51,7 @@ import {
 } from "./remoteForOnedrive";
 import { DEFAULT_S3_CONFIG } from "./remoteForS3";
 import { DEFAULT_WEBDAV_CONFIG } from "./remoteForWebdav";
-import { RemotelySaveSettingTab } from "./settings";
+import { ObsidianVaultSyncSettingTab } from "./settings";
 import { 
   getRemoteMetadata, 
   getRemoteStates, 
@@ -85,7 +85,7 @@ import {
 import { SizesConflictModal } from "./syncSizesConflictNotice";
 import {mkdirpInVault, getLastSynced} from "./misc";
 
-const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
+const DEFAULT_SETTINGS: ObsidianVaultSyncPluginSettings = {
   s3: DEFAULT_S3_CONFIG,
   webdav: DEFAULT_WEBDAV_CONFIG,
   dropbox: DEFAULT_DROPBOX_CONFIG,
@@ -126,8 +126,8 @@ const iconNameSyncRunning = "refresh-ccw";
 const iconNameStatusBar = "refresh-ccw-dot";
 const iconNameLogs = "file-text";
 
-export default class RemotelySavePlugin extends Plugin {
-  settings: RemotelySavePluginSettings;
+export default class ObsidianVaultSyncPlugin extends Plugin {
+  settings: ObsidianVaultSyncPluginSettings;
   db: InternalDBs;
   syncStatus: SyncStatusType;
   syncStatusText?: string;
@@ -981,7 +981,7 @@ export default class RemotelySavePlugin extends Plugin {
       callback: () => new Notice(this.syncStatusText)
     });
     
-    this.addSettingTab(new RemotelySaveSettingTab(this.app, this));
+    this.addSettingTab(new ObsidianVaultSyncSettingTab(this.app, this));
 
     // Show status bar show by default on desktop only
     if (this.settings.enableStatusBarInfo === undefined) {
@@ -1222,18 +1222,18 @@ export default class RemotelySavePlugin extends Plugin {
 
     const statusBar = document.getElementsByClassName("status-bar")[0] as HTMLElement;
 
-    // Remove any remotely sync classes
-    statusBar.removeClass("remotely-sync-show-status-bar");
+    // Remove any obsidian-vault-sync classes
+    statusBar.removeClass("obsidian-vault-sync-show-status-bar");
     statusBar.style.marginBottom = "0px";
 
     Array.from(statusBar.children).forEach((element) => {
-      element.removeClass("remotely-sync-hidden");
+      element.removeClass("obsidian-vault-sync-hidden");
     });
 
     if (enabled && this.settings.enableStatusBarInfo) {
       // Enable status bar on mobile
       if (Platform.isMobile) {
-        statusBar.addClass("remotely-sync-show-status-bar");
+        statusBar.addClass("obsidian-vault-sync-show-status-bar");
         
         // Shifts up the status bar on phone to not cover the navmenu
         if (Platform.isPhone) {
@@ -1246,7 +1246,7 @@ export default class RemotelySavePlugin extends Plugin {
       // Hide every element if set
       if (this.settings.showLastSyncedOnly)  {
         Array.from(statusBar.children).forEach((element) => {
-          (element as HTMLElement).addClass("remotely-sync-hidden");
+          (element as HTMLElement).addClass("obsidian-vault-sync-hidden");
         });
       }
 
@@ -1387,7 +1387,7 @@ export default class RemotelySavePlugin extends Plugin {
           }
 
           mutation.addedNodes.forEach((node) => {
-            if ((node as Element).className === "status-bar-item plugin-remotely-secure") {
+            if ((node as Element).className === "status-bar-item plugin-obsidian-vault-sync") {
               byPlugin = true;
             }
           })

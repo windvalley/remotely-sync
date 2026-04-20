@@ -1,9 +1,9 @@
 {
-  "id": "remotely-secure",
-  "name": "Remotely Sync",
+  "id": "obsidian-vault-sync",
+  "name": "obsidian-vault-sync",
   "version": "0.4.49",
   "minAppVersion": "1.4.11",
-  "description": "Security and feature updates for the remotely-save unofficial plugin allowing users to synchronize notes between local device and the cloud service. Not backwards compatible.",
+  "description": "Sync Obsidian vaults through S3, WebDAV, Dropbox, or OneDrive. Full new plugin identity, not backward compatible with remotely-save or older forks.",
   "author": "sboesen",
   "authorUrl": "https://github.com/sboesen",
   "isDesktopOnly": false

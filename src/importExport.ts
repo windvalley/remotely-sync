@@ -4,13 +4,13 @@ import cloneDeep from "lodash/cloneDeep";
 import {
   COMMAND_URI,
   UriParams,
-  RemotelySavePluginSettings,
+  ObsidianVaultSyncPluginSettings,
 } from "./baseTypes";
 
 import { log } from "./moreOnLog";
 
 export const exportQrCodeUri = async (
-  settings: RemotelySavePluginSettings,
+  settings: ObsidianVaultSyncPluginSettings,
   currentVaultName: string,
   pluginVersion: string
 ) => {
@@ -32,7 +32,7 @@ export const exportQrCodeUri = async (
 export interface ProcessQrCodeResultType {
   status: "error" | "ok";
   message: string;
-  result?: RemotelySavePluginSettings;
+  result?: ObsidianVaultSyncPluginSettings;
 }
 
 export const importQrCodeUri = (
@@ -65,7 +65,7 @@ export const importQrCodeUri = (
     };
   }
 
-  let settings = {} as RemotelySavePluginSettings;
+  let settings = {} as ObsidianVaultSyncPluginSettings;
   try {
     settings = JSON.parse(params.data);
   } catch (e) {

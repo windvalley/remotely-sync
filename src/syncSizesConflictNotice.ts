@@ -1,18 +1,18 @@
 import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
-import type RemotelySavePlugin from "./main"; // unavoidable
+import type ObsidianVaultSyncPlugin from "./main"; // unavoidable
 import type { TransItemType } from "./i18n";
 import type { FileOrFolderMixedState } from "./baseTypes";
 
 import { log } from "./moreOnLog";
 
 export class SizesConflictModal extends Modal {
-  readonly plugin: RemotelySavePlugin;
+  readonly plugin: ObsidianVaultSyncPlugin;
   readonly skipSizeLargerThan: number;
   readonly sizesGoWrong: FileOrFolderMixedState[];
   readonly hasPassword: boolean;
   constructor(
     app: App,
-    plugin: RemotelySavePlugin,
+    plugin: ObsidianVaultSyncPlugin,
     skipSizeLargerThan: number,
     sizesGoWrong: FileOrFolderMixedState[],
     hasPassword: boolean

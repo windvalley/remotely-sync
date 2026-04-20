@@ -4,15 +4,15 @@ import { reverseString } from "./misc";
 import { log } from "./moreOnLog";
 
 const DEFAULT_README_FOR_METADATAONREMOTE =
-  "Do NOT edit or delete the file manually. This file is for the plugin remotely-sync to store some necessary meta data on the remote services. Its content is slightly obfuscated.";
+  "Do NOT edit or delete the file manually. This file is for the plugin obsidian-vault-sync to store some necessary meta data on the remote services. Its content is slightly obfuscated.";
 
 const DEFAULT_VERSION_FOR_METADATAONREMOTE = "20220220";
 
 export const DEFAULT_FILE_NAME_FOR_METADATAONREMOTE =
-  "_remotely-secure-metadata-on-remote.json";
+  "_obsidian-vault-sync-metadata-on-remote.json";
 
 export const DEFAULT_FILE_NAME_FOR_METADATAONREMOTE2 =
-  "_remotely-secure-metadata-on-remote.bin";
+  "_obsidian-vault-sync-metadata-on-remote.bin";
 
 export const FILE_NAME_FOR_DATA_JSON =
   "data.json";

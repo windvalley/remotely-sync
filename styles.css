@@ -63,10 +63,10 @@
 }
 
 /* !important isn't great practice but it needs to overwrite other css classes */
-.remotely-sync-hidden {
+.obsidian-vault-sync-hidden {
   display: none !important; 
 }
 
-.remotely-sync-show-status-bar {
+.obsidian-vault-sync-show-status-bar {
   display: flex !important;
 }
